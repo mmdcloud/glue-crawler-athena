@@ -1,8 +1,10 @@
 # S3 bucket for storing athena query results
 resource "aws_s3_bucket" "athena-s3-data-madmax" {
-  bucket = "athena-s3-data-madmax"    
+  bucket = "athena-s3-data-madmax"
+  force_destroy = true
 }
 
+# S3 data source object
 resource "aws_s3_bucket_object" "source-data-object" {
   key    = "netflix_titles.csv"
   bucket = aws_s3_bucket.athena-s3-data-madmax.id
@@ -12,23 +14,29 @@ resource "aws_s3_bucket_object" "source-data-object" {
 # S3 bucket for storing athena query results
 resource "aws_s3_bucket" "athena-results-madmax" {
   bucket = "athena-results-madmax"
+  force_destroy = true
 }
 
-# Athena Database
-resource "aws_athena_database" "athena-results-madmax" {
-  name   = "database_name"
+resource "aws_athena_data_catalog" "example" {
+  name        = "glue-data-catalog"
+  description = "Glue based Data Catalog"
+  type        = "GLUE"
+
+  parameters = {
+    "catalog-id" = "123456789012"
+  }
+}
+
+# Athena catalog database
+resource "aws_athena_database" "netflix" {
+  name   = "netflix"
   bucket = aws_s3_bucket.athena-results-madmax.id
-}
-
-# Glue catalog database
-resource "aws_glue_catalog_database" "netflix" {
-  name = "netflix"
 }
 
 # Glue table
 resource "aws_glue_catalog_table" "shows" {
   name          = "shows"
-  database_name = aws_glue_catalog_database.netflix.name
+  database_name = aws_athena_database.netflix.name
 }
 
 # IAM Role for Glue
@@ -75,9 +83,13 @@ resource "aws_iam_policy" "glue-s3-policy" {
     EOF
 }
 
-resource "aws_iam_role_policy_attachment" "glue-service-role" {
-  role       = aws_iam_role.athena-glue-role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonGlueServiceRole"
+data "aws_iam_policy" "glue-service-role" {
+  arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+}
+
+resource "aws_iam_role_policy_attachment" "glue-service-role-attachment" {
+   role       = "${aws_iam_role.athena-glue-role.name}"
+   policy_arn = "${data.aws_iam_policy.glue-service-role.arn}"
 }
 
 # Glue S3 Role-Policy Attachment
@@ -88,7 +100,7 @@ resource "aws_iam_role_policy_attachment" "glue-s3-policy-attachment" {
 
 # Glue crawler
 resource "aws_glue_crawler" "netflix_crawler" {
-  database_name = aws_glue_catalog_database.netflix.name
+  database_name = aws_athena_database.netflix.name
   name          = "netflix_crawler"
   role          = aws_iam_role.athena-glue-role.arn
 

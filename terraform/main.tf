@@ -1,11 +1,11 @@
 # S3 bucket for storing athena query results
 resource "aws_s3_bucket" "athena-s3-data-madmax" {
-  bucket = "athena-s3-data-madmax"
+  bucket        = "athenas3datamadmax"
   force_destroy = true
 }
 
 # S3 data source object
-resource "aws_s3_bucket_object" "source-data-object" {
+resource "aws_s3_object" "source-data-object" {
   key    = "netflix_titles.csv"
   bucket = aws_s3_bucket.athena-s3-data-madmax.id
   source = "../netflix_titles.csv"
@@ -13,7 +13,7 @@ resource "aws_s3_bucket_object" "source-data-object" {
 
 # S3 bucket for storing athena query results
 resource "aws_s3_bucket" "athena-results-madmax" {
-  bucket = "athena-results-madmax"
+  bucket        = "athenaresultsmadmax"
   force_destroy = true
 }
 
@@ -75,7 +75,7 @@ resource "aws_iam_policy" "glue-s3-policy" {
                     "s3:PutObject"
                 ],
                 "Resource": [
-                    "arn:aws:s3:::athena-data-madmax/netflix_titles.csv*"
+                    "arn:aws:s3:::athenadatamadmax/netflix_titles.csv*"
                 ]
             }
         ]
@@ -88,8 +88,8 @@ data "aws_iam_policy" "glue-service-role" {
 }
 
 resource "aws_iam_role_policy_attachment" "glue-service-role-attachment" {
-   role       = "${aws_iam_role.athena-glue-role.name}"
-   policy_arn = "${data.aws_iam_policy.glue-service-role.arn}"
+  role       = aws_iam_role.athena-glue-role.name
+  policy_arn = data.aws_iam_policy.glue-service-role.arn
 }
 
 # Glue S3 Role-Policy Attachment
